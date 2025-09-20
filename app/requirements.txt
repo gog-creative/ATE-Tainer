@@ -1,0 +1,7 @@
+discord
+openai
+google-genai
+fastapi
+flet
+websocket-client
+pydantic

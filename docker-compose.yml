@@ -1,0 +1,14 @@
+services:
+  fastapi:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    env_file:
+      - ./app/.env
+    tty: true
+    restart: always
+
+networks:
+  default:
+    external:
+      name: CloudflareTunnel

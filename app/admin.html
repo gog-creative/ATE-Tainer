@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atetainer - 管理パネル</title>
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --background-color: #f8f9fa;
+            --text-color: #212529;
+            --border-color: #dee2e6;
+            --card-bg: #ffffff;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 1rem;
+        }
+        h1, h2, h3 {
+            margin: 0;
+            color: var(--primary-color);
+        }
+        h3 {
+            color: var(--secondary-color);
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .container {
+            background-color: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        input[type="text"], input[type="number"], input[type="password"] {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 0.6rem 1.2rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 1rem;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: var(--secondary-color);
+            cursor: not-allowed;
+        }
+        #game-list {
+            list-style-type: none;
+            padding: 0;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 1rem;
+        }
+        #game-list li {
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+        }
+        #game-list li:hover {
+            background-color: var(--background-color);
+        }
+        #game-details-area {
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .message {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            word-break: break-all;
+        }
+        .message:last-child {
+            border-bottom: none;
+        }
+        .message p {
+            margin: 0 0 0.25rem;
+        }
+        .message .meta {
+            font-size: 0.85rem;
+            color: var(--secondary-color);
+        }
+        .hidden {
+            display: none;
+        }
+        .status {
+            padding: 0.5rem;
+            border-radius: 4px;
+            color: white;
+            margin-top: 1rem;
+        }
+        .status.success { background-color: var(--success-color); }
+        .status.error { background-color: var(--danger-color); }
+        #password-prompt {
+            max-width: 400px;
+            margin: 5rem auto;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="password-prompt" class="container">
+        <h2>管理者認証</h2>
+        <p>管理パネルにアクセスするにはパスワードを入力してください。</p>
+        <div class="form-group">
+            <input type="password" id="master-password" placeholder="パスワード">
+        </div>
+        <button id="login-btn">ログイン</button>
+        <p id="login-error" class="hidden" style="color: var(--danger-color); margin-top: 1rem;">パスワードが違うか、サーバーエラーが発生しました。</p>
+    </div>
+
+    <div id="main-content" class="hidden">
+        <h1>Atetainer - 管理パネル</h1>
+
+        <div class="container">
+            <h2>アクティブなゲーム</h2>
+            <button id="fetch-games-btn">ゲームリストを更新</button>
+            <ul id="game-list" style="margin-top: 1rem;">
+                <li>ゲームはありません</li>
+            </ul>
+        </div>
+
+        <div class="container">
+            <h2>新規ゲーム作成</h2>
+            <form id="new-game-form">
+                <div class="form-group">
+                    <label for="answer">お題</label>
+                    <input type="text" id="answer" required>
+                </div>
+                <div class="form-group">
+                    <label for="question-limit">質問回数上限</label>
+                    <input type="number" id="question-limit" value="10" required>
+                </div>
+                <div class="form-group">
+                    <label for="ans-limit">回答回数上限</label>
+                    <input type="number" id="ans-limit" value="3" required>
+                </div>
+                <div class="form-group">
+                    <label for="time-limit">制限時間（秒）</label>
+                    <input type="number" id="time-limit" value="300" required>
+                </div>
+                <button type="submit">ゲームを作成</button>
+            </form>
+        </div>
+
+        <div id="manage-game-container" class="container hidden">
+            <h2>ゲーム管理: <span id="current-game-id"></span></h2>
+            
+            <div id="change-theme-section">
+                <h3>次のお題を変更</h3>
+                <div class="form-group">
+                    <label for="next-theme">次のお題</label>
+                    <input type="text" id="next-theme" required>
+                </div>
+                <button id="change-theme-btn">お題を変更</button>
+            </div>
+            
+            <h3>ゲーム詳細</h3>
+            <div id="game-details-area"></div>
+        </div>
+
+        <div id="status-bar" class="status hidden"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'https://atetainer.gog-lab.org';
+        const ADMIN_USER_ID = '00000000-0000-0000-0000-000000000000';
+        let authenticatedPassword = '';
+
+        // --- Password Prompt Elements ---
+        const passwordPrompt = document.getElementById('password-prompt');
+        const mainContent = document.getElementById('main-content');
+        const masterPasswordInput = document.getElementById('master-password');
+        const loginBtn = document.getElementById('login-btn');
+        const loginError = document.getElementById('login-error');
+
+        // --- Main Application Elements ---
+        const fetchGamesBtn = document.getElementById('fetch-games-btn');
+        const gameList = document.getElementById('game-list');
+        const newGameForm = document.getElementById('new-game-form');
+        const manageGameContainer = document.getElementById('manage-game-container');
+        const currentGameIdSpan = document.getElementById('current-game-id');
+        const gameDetailsArea = document.getElementById('game-details-area');
+        const changeThemeBtn = document.getElementById('change-theme-btn');
+        const nextThemeInput = document.getElementById('next-theme');
+        const statusBar = document.getElementById('status-bar');
+
+        // --- Login Logic ---
+        async function handleLogin() {
+            const password = masterPasswordInput.value;
+            if (!password) return;
+
+            loginError.classList.add('hidden');
+            loginBtn.disabled = true;
+            loginBtn.textContent = '確認中...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/game_list`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Authentication failed');
+                }
+
+                const games = await response.json();
+                
+                // Success
+                authenticatedPassword = password;
+                passwordPrompt.classList.add('hidden');
+                mainContent.classList.remove('hidden');
+                renderGameList(games);
+
+            } catch (error) {
+                loginError.classList.remove('hidden');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'ログイン';
+            }
+        }
+
+        loginBtn.addEventListener('click', handleLogin);
+        masterPasswordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleLogin();
+            }
+        });
+
+        // --- Main Application Functions ---
+        function showStatus(message, isError = false) {
+            statusBar.textContent = message;
+            statusBar.className = `status ${isError ? 'error' : 'success'}`;
+            statusBar.classList.remove('hidden');
+            setTimeout(() => statusBar.classList.add('hidden'), 5000);
+        }
+
+        function renderGameList(games) {
+            gameList.innerHTML = '';
+            if (Object.keys(games).length === 0) {
+                gameList.innerHTML = '<li>アクティブなゲームはありません</li>';
+            } else {
+                for (const gameId in games) {
+                    const li = document.createElement('li');
+                    li.textContent = `ID: ${gameId} - 状態: ${games[gameId].status} - お題: ${games[gameId].answer} - 接続数: ${games[gameId].connection_count}`;
+                    li.dataset.gameId = gameId;
+                    li.addEventListener('click', () => selectGame(gameId));
+                    gameList.appendChild(li);
+                }
+            }
+        }
+
+        async function fetchGames() {
+            if (!authenticatedPassword) {
+                showStatus('認証エラー。ページをリロードしてください。', true);
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE_URL}/game_list`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: authenticatedPassword })
+                });
+                if (!response.ok) {
+                    throw new Error(`サーバーエラー: ${response.status}`);
+                }
+                const games = await response.json();
+                renderGameList(games);
+            } catch (error) {
+                showStatus(`ゲームリストの取得に失敗しました: ${error.message}`, true);
+            }
+        }
+
+        function selectGame(gameId) {
+            currentGameIdSpan.textContent = gameId;
+            manageGameContainer.classList.remove('hidden');
+            fetchGameDetails(gameId);
+        }
+
+        async function fetchGameDetails(gameId) {
+            gameDetailsArea.innerHTML = '<p>詳細を読み込み中...</p>';
+            try {
+                const response = await fetch(`${API_BASE_URL}/${gameId}/?user_id=${ADMIN_USER_ID}`);
+                 if (!response.ok) {
+                    throw new Error(`サーバーエラー: ${response.status}`);
+                }
+                const details = await response.json();
+                renderGameDetails(details);
+            } catch (error) {
+                gameDetailsArea.innerHTML = `<p style="color: red;">詳細の取得に失敗しました: ${error.message}</p>`;
+            }
+        }
+
+        function renderGameDetails(details) {
+            gameDetailsArea.innerHTML = '';
+
+            const basicInfo = document.createElement('div');
+            basicInfo.innerHTML = `
+                <p><strong>ステータス:</strong> ${details.status}</p>
+                <p><strong>ジャンル:</strong> ${details.genre}</p>
+                <p><strong>質問上限:</strong> ${details.question_limit}</p>
+                <p><strong>回答上限:</strong> ${details.ans_limit}</p>
+                <p><strong>開始時間:</strong> ${details.start_time ? new Date(details.start_time).toLocaleString() : '未開始'}</p>
+                <p><strong>終了時間:</strong> ${details.end_time ? new Date(details.end_time).toLocaleString() : '未終了'}</p>
+                <h3>メッセージ履歴</h3>
+            `;
+            gameDetailsArea.appendChild(basicInfo);
+
+            if (details.messages.length === 0) {
+                gameDetailsArea.innerHTML += '<p>メッセージはまだありません。</p>';
+                return;
+            }
+
+            details.messages.forEach(msg => {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = 'message';
+                let content = `<p class="meta">${new Date(msg.time).toLocaleString()} - ${msg.nickname} (${msg.user})</p>`;
+                
+                if (msg.type === 'res_question') {
+                    content += `
+                        <p><strong>質問:</strong> ${msg.question}</p>
+                        <p><strong>AIの返答:</strong> ${msg.title} (${msg.reply})</p>
+                    `;
+                } else if (msg.type === 'res_answer') {
+                    content += `
+                        <p><strong>回答:</strong> ${msg.answer}</p>
+                        <p><strong>AIの判定:</strong> ${msg.judge}</p>
+                    `;
+                } else {
+                     content += `<p>${JSON.stringify(msg)}</p>`;
+                }
+                msgDiv.innerHTML = content;
+                gameDetailsArea.appendChild(msgDiv);
+            });
+        }
+
+        async function createNewGame(event) {
+            event.preventDefault();
+            const payload = {
+                user: ADMIN_USER_ID,
+                password: authenticatedPassword,
+                answer: document.getElementById('answer').value,
+                ans_limit: parseInt(document.getElementById('ans-limit').value),
+                question_limit: parseInt(document.getElementById('question-limit').value),
+                time_limit: parseInt(document.getElementById('time-limit').value)
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/new_game`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    throw new Error(`サーバーエラー: ${response.status}`);
+                }
+                const data = await response.json();
+                showStatus(`ゲーム ${data.game_id} を作成しました。`);
+                newGameForm.reset();
+                await fetchGames();
+                selectGame(data.game_id);
+            } catch (error) {
+                showStatus(`ゲームの作成に失敗しました: ${error.message}`, true);
+            }
+        }
+        
+        async function changeTheme() {
+            const gameId = currentGameIdSpan.textContent;
+            const answer = nextThemeInput.value;
+
+            if (!gameId || !answer) {
+                showStatus('お題を入力してください。', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/${gameId}/change_theme`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: authenticatedPassword, answer: answer })
+                });
+                if (!response.ok) {
+                    throw new Error(`サーバーエラー: ${response.status}`);
+                }
+                showStatus('次のお題を変更しました。');
+                nextThemeInput.value = '';
+            } catch (error) {
+                showStatus(`お題の変更に失敗しました: ${error.message}`, true);
+            }
+        }
+
+        fetchGamesBtn.addEventListener('click', fetchGames);
+        newGameForm.addEventListener('submit', createNewGame);
+        changeThemeBtn.addEventListener('click', changeTheme);
+
+    </script>
+</body>
+</html>
