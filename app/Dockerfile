@@ -11,7 +11,7 @@ COPY . .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # アプリケーションのソースコードをコンテナにコピー
-COPY ./app .
+COPY . .
 
 # Flaskアプリケーションを起動
 CMD ["python3","-m", "uvicorn", "server:fastapi","--host", "0.0.0.0", "--port", "80"]
