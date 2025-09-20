@@ -1,5 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, WebSocketException
 from fastapi import HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from ai import Ai_Agent
 import datetime
@@ -14,6 +15,13 @@ load_dotenv()
 ai = Ai_Agent("gemini", "gemini-2.5-flash")
 #ai = Ai_Agent("openai", "gpt-5-mini")
 fastapi = FastAPI()
+fastapi.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # すべてのオリジンを許可
+    allow_credentials=True,
+    allow_methods=["*"],  # すべてのHTTPメソッドを許可
+    allow_headers=["*"],  # すべてのヘッダーを許可
+)
 game_manager = GameManager(ai)
 TZ = datetime.timezone(datetime.timedelta(hours=9))
 
