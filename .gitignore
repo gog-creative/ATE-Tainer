@@ -5,3 +5,5 @@ venv
 .env
 dist
 build
+client.spec
+installer.iss
