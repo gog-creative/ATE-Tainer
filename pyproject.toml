@@ -1,0 +1,5 @@
+[tool.flet.android]
+min_sdk_version = 24
+
+[tool.flet.flutter.pubspec.dependency_overrides]
+webview_flutter_android = "4.10.1"

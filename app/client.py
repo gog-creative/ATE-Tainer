@@ -588,7 +588,7 @@ def main(page: ft.Page):
     page.title = "ATE-Tainer - AIアキネーターゲーム"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-    page.theme = ft.Theme(text_theme=ft.TextTheme(body_medium=ft.TextStyle(size=16)))
+    page.theme_mode = ft.ThemeMode.DARK
 
     app = GameClientControl(page)
     page.add(app)
