@@ -442,7 +442,7 @@ class GameClientControl(ft.Column):
             self.page.close(dlg)
 
         # Sort answerers by time
-        sorted_answerers = sorted(iterable=data.correct_answerers, key=lambda x: x.answered_at)
+        sorted_answerers = sorted(data.correct_answerers, key=lambda x: x.answered_at or datetime.datetime.min)
 
         # Create data rows
         rows = []
