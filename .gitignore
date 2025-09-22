@@ -5,6 +5,7 @@ venv
 .env
 dist
 app/build/*
+/build/*
+!windows
 client.spec
 installer.iss
-!windows

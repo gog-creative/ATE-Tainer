@@ -25,6 +25,7 @@ class User_data(BaseModel):
     remaining_question: int
     answered_correctly: bool = False
     is_ready: bool = False
+    answered_at: Optional[datetime.datetime] = None
 
 
 # ゲーム
@@ -167,9 +168,9 @@ class Game_data:
                 root=schemes.Result(
                     correct_answer=self.answer,
                     description=self.answer_description,
-                    ranking=[
-                        schemes._result_element(
-                            user_id=user.user_id, nickname=user.nickname
+                    correct_answerers=[
+                        schemes.CorrectAnswerer(
+                            user_id=user.user_id, nickname=user.nickname, answered_at=user.answered_at
                         )
                         for user in self.correct_answerer
                     ],

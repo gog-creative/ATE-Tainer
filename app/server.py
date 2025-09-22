@@ -198,6 +198,7 @@ async def websocket_broadcast(ws: WebSocket, game_id: int):
     
                 if res.reply == "正解":
                     user.answered_correctly = True
+                    user.answered_at = datetime.datetime.now(TZ)
                     game.correct_answerer.append(user)
 
                 # レスポンス

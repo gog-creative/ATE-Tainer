@@ -52,15 +52,16 @@ class Res_Answer(BaseModel):
 class Event(BaseModel):
     type: Literal["timeup","game_start","wait"]
 
-class _result_element(BaseModel):
+class CorrectAnswerer(BaseModel):
     user_id:uuid.UUID
     nickname: str
+    answered_at: Optional[datetime.datetime]
 
 class Result(BaseModel):
     type: Literal["result"] = "result"
     correct_answer: str
     description: str
-    ranking:list[_result_element]
+    correct_answerers:list[CorrectAnswerer]
 
 # 新規ゲームへリダイレクトさせる
 class NewGame_Redirect(BaseModel):

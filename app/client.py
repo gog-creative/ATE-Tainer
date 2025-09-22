@@ -4,14 +4,16 @@ import json
 import uuid
 import threading
 import httpx
-import time
 import datetime
 from typing import Callable, Any
+import os
+import logging
 
 from pydantic import ValidationError
 import schemes
 
 URL_DOMAIN = "atetainer.gog-lab.org"
+os.environ["debug"] = "True"
 
 # ---------------------------------------------------------------------------- #
 # 1. WebSocket Client (Handles Network Communication)
@@ -35,6 +37,8 @@ class WebSocketClient:
         self._on_close_callback = on_close
 
     def _on_message(self, ws, message: str):
+        if os.environ.get('debug') == 'True':
+            logging.info(f"RECV: {message}")
         self._on_message_callback(message)
 
     def _on_error(self, ws, error):
@@ -75,6 +79,8 @@ class WebSocketClient:
 
     def send_message(self, message: str):
         if self.ws_app and self.is_connected:
+            if os.environ.get('debug') == 'True':
+                logging.info(f"SEND: {message}")
             self.ws_app.send(message)
         else:
             self._on_error_callback("Not connected.")
@@ -142,7 +148,7 @@ class GameClientControl(ft.Column):
         
         self.title_text = ft.Text("ATE-Tainer", size=50, weight=ft.FontWeight.BOLD)
         self.subtitle_text = ft.Text("Gemini APIを活用したオリジナルのアキネイターゲーム", size=20)
-        self.version_text = ft.Text("build-20250919", color=ft.Colors.GREY, size=12)
+        self.version_text = ft.Text("build-20250922", color=ft.Colors.GREY, size=12)
         
         self.connect_column = ft.Column(
             [
@@ -428,9 +434,53 @@ class GameClientControl(ft.Column):
         self._set_game_controls_enabled(False)
         self._update_status_panel("入力時間終了", ft.Colors.RED_700)
         if isinstance(data, schemes.Result):
-            result_text = f"正解は「{data.correct_answer}」でした！\n{data.description}"
-            self._show_ai_response(result_text)
+            self._show_result_dialog(data)
         self.update()
+
+    def _show_result_dialog(self, data: schemes.Result):
+        def close_dialog(e):
+            self.page.close(dlg)
+
+        # Sort answerers by time
+        sorted_answerers = sorted(iterable=data.correct_answerers, key=lambda x: x.answered_at)
+
+        # Create data rows
+        rows = []
+        for i, answerer in enumerate(sorted_answerers):
+            rows.append(
+                ft.DataRow(cells=[
+                    ft.DataCell(ft.Text(str(i + 1))),
+                    ft.DataCell(ft.Text(answerer.nickname)),
+                    ft.DataCell(ft.Text(answerer.answered_at.strftime('%H:%M:%S'))),
+                ])
+            )
+
+        dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Text(f"結果発表！正解は「{data.correct_answer}」でした！"),
+            content=ft.Column(
+                [
+                    ft.Text(data.description, size=16),
+                    ft.Divider(),
+                    ft.Text("ランキング", size=20, weight=ft.FontWeight.BOLD),
+                    ft.DataTable(
+                        columns=[
+                            ft.DataColumn(ft.Text("順位")),
+                            ft.DataColumn(ft.Text("ニックネーム")),
+                            ft.DataColumn(ft.Text("解答時間")),
+                        ],
+                        rows=rows,
+                    ) if rows else ft.Text("正解者はいませんでした。"),
+                ],
+                tight=True,
+                width=500,
+                scroll=ft.ScrollMode.ADAPTIVE,
+            ),
+            actions=[ft.TextButton("閉じる", on_click=close_dialog)],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        self.page.open(dlg)
+        self.page.update()
 
     # --- Message & Card Builders ---
     def _add_raw_message_to_chat(self, text: str, color: str = ft.Colors.WHITE):
@@ -594,4 +644,5 @@ def main(page: ft.Page):
     page.add(app)
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     ft.app(target=main)
