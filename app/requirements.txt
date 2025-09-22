@@ -7,3 +7,5 @@ websocket-client
 pydantic
 uvicorn
 dotenv
+nuitka
+pyinstaller

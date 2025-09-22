@@ -177,9 +177,9 @@ class Game_data:
                 )
             )
         )
+        print("新規ゲームを作成")
+        await asyncio.sleep(5)
         
-        await asyncio.sleep(15)
-
         new_game_data = self.initial_post_data.model_copy(deep=True)
         if self.manual_next_answer:
             new_game_data.answer = self.manual_next_answer
@@ -189,6 +189,7 @@ class Game_data:
             new_game_data.answer = random.choice(themes).strip()
 
         new_game_id = await self.game_manager.create_game(new_game_data)
+        print(f"新規ゲームID：{new_game_id}")
         await self.broadcast(
             schemes.WSEvent(root=schemes.NewGame_Redirect(game_id=new_game_id))
         )
