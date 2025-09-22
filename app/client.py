@@ -5,7 +5,7 @@ import uuid
 import threading
 import httpx
 import datetime
-from typing import Callable, Any
+from typing import Callable, Any, List, Union
 import os
 import logging
 
@@ -428,7 +428,7 @@ class GameClientControl(ft.Column):
                 self._update_status_panel(f"現在 {state_text}", ft.Colors.RED_700)
         self.update()
 
-    def _handle_game_end(self, data: schemes.Event | schemes.Result):
+    def _handle_game_end(self, data: Union[schemes.Event, schemes.Result]):
         self.game_is_over = True
         self.countdown_stop_event.set()
         self._set_game_controls_enabled(False)
@@ -487,7 +487,7 @@ class GameClientControl(ft.Column):
         self.chat_area.controls.append(ft.Container(ft.Text(text, color=color, weight=ft.FontWeight.BOLD)))
         self.update()
 
-    def _add_formatted_message(self, msg_data: dict | schemes.Res_Question | schemes.Res_Answer):
+    def _add_formatted_message(self, msg_data: Union[schemes.Res_Question, schemes.Res_Answer, dict]):
         card_builders = {
             "local_question_loading": self._build_loading_card,
             "res_question": self._build_question_card,
@@ -515,7 +515,7 @@ class GameClientControl(ft.Column):
         self.chat_area.controls.append(message_row)
         self.update()
 
-    def _build_card_container(self, card_items: list[ft.Control], is_own: bool) -> ft.Container:
+    def _build_card_container(self, card_items: List[ft.Control], is_own: bool) -> ft.Container:
         return ft.Container(
             content=ft.Column(card_items, spacing=5),
             padding=12, border_radius=10,

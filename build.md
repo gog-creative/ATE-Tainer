@@ -8,4 +8,4 @@ flet build [windows | apk] --module-name client
 
 # nuitkaでのビルド
 cd app
-nuitka --windows-console-mode attach
+nuitka --onefile --windows-console-mode=attach client.py

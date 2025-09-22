@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 import datetime
-from typing import Literal, Union, Optional
+from typing import Literal, Union, Optional, List, Dict
 import uuid
 
 # WebSocketイベント用
@@ -61,7 +61,7 @@ class Result(BaseModel):
     type: Literal["result"] = "result"
     correct_answer: str
     description: str
-    correct_answerers:list[CorrectAnswerer]
+    correct_answerers:List[CorrectAnswerer]
 
 # 新規ゲームへリダイレクトさせる
 class NewGame_Redirect(BaseModel):
@@ -83,9 +83,9 @@ class GameData_Res(BaseModel):
     question_limit :int
     start_time: Optional[datetime.datetime]
     end_time: Optional[datetime.datetime]
-    messages: list[Res_Answer|Res_Question]
+    messages: List[Union[Res_Answer,Res_Question]]
     status: Literal['waiting', 'playing', 'finished', 'redirected']
-    users: dict[uuid.UUID, str]
+    users: Dict[uuid.UUID, str]
 
 
 class GetGameList(BaseModel):
