@@ -163,16 +163,18 @@ class Ai_Agent:
     
     async def question(self, answer:str, question:str, answer_description:str = "") -> Question_schema:
         system_prompt = f"""あなたは単語・人物名当てゲームの判定システムです。
+        ユーザーは答えについて質問をするので、回答してください。
         このゲームの答え：「{answer}」
         答えについての説明：「{answer_description}」
-        ユーザーは答えについて質問をするので、回答してください。
+        
+        # ルール
         ・[単語]＋？　のように、単語だけで質問された場合、「{answer}は[単語]である」が成り立つかどうかで判定します。
-        ・reasonには、ユーザーが入力した言語と同じ言語で回答してください。
-        以下の場合は回答不能とします。
-        1. 質問が曖昧、または意味不明な場合。
-        2. 質問に答えが含まれる場合。この場合、include_answerをTrueとしてください。
-        3. 最初の文字は〇ですか？など文字から当てようとしている質問の場合。
-        4. あなたが質問に対する答えを知らない場合。"""
+        ・** reply と reason には、必ずユーザーが入力した言語で回答すること！**
+        ・以下の場合は回答不能とします。
+            1. 質問が曖昧、または意味不明な場合。
+            2. 質問に答えが含まれる場合。この場合、include_answerをTrueとしてください。
+            3. 最初の文字は〇ですか？など文字から当てようとしている質問の場合。
+            4. あなたが質問に対する答えを知らない場合。"""
 
         response = await self._generate(self.Question_schema,system_prompt,question,["reply","include_answer"])
         print(response)
