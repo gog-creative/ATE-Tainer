@@ -196,19 +196,19 @@ async def websocket_broadcast(ws: WebSocket, game_id: int):
                     await ws.send_text(schemes.Response(text=f"AI処理中にエラーが発生しました：{e.args}").model_dump_json())
                     return
     
-                if res.reply == "正解":
+                if res.is_correct:
                     user.answered_correctly = True
                     user.answered_at = datetime.datetime.now(TZ)
                     game.correct_answerer.append(user)
 
                 # レスポンス
-                await ws.send_text(schemes.Response(text=f"判定：{res.reply}").model_dump_json())
+                await ws.send_text(schemes.Response(text=f"{"正解" if res.is_correct else "不正解"}").model_dump_json())
                 broadcast_data = schemes.Res_Answer(
                     time=datetime.datetime.now(TZ),
                     user=user.user_id,
                     nickname=user.nickname,
                     include_answer=res.is_close,
-                    judge=res.reply,
+                    judge=res.is_correct,
                     answer=data.text,
                 )
 

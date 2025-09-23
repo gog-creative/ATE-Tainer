@@ -62,7 +62,7 @@ class Ai_Agent:
 
     #回答の返答スキーマ
     class Answer_schema(BaseModel):
-        reply: Literal["正解","不正解"] = Field(description="ユーザーの回答が正解かどうか")
+        is_correct: bool = Field(description="ユーザーの回答が正解かどうか")
         is_close: bool = Field(description="ユーザーの質問自体から答えを推測できるかどうか")
 
     def __init__(self, type:Literal["gemini","openai"], model: str, thinking:bool = True):
@@ -167,7 +167,7 @@ class Ai_Agent:
         答えについての説明：「{answer_description}」
         ユーザーは答えについて質問をするので、回答してください。
         ・[単語]＋？　のように、単語だけで質問された場合、「{answer}は[単語]である」が成り立つかどうかで判定します。
-        ・入力と同じ言語で回答してください。
+        ・reasonには、ユーザーが入力した言語と同じ言語で回答してください。
         以下の場合は回答不能とします。
         1. 質問が曖昧、または意味不明な場合。
         2. 質問に答えが含まれる場合。この場合、include_answerをTrueとしてください。
@@ -180,13 +180,12 @@ class Ai_Agent:
 
         return validated
     
-    async def answer(self, answer:str, question:str,genre:str, answer_description:str = "") -> Answer_schema:
+    async def answer(self, answer:str, question:str, genre:str, answer_description:str = "") -> Answer_schema:
         system_prompt = f"""あなたは単語・人物名当てゲームの判定システムです。
         このゲームの答え：「{answer}」
         ユーザーに与えられているジャンル情報：「{genre}」
         答えについての説明：「{answer_description}」
         ユーザーは回答するので、それが正しいか判定してください。
-        また、入力と同じ言語で応答してください。
         判定基準：
         ・ユーザーの回答が答えである、またはその表記揺れ（表記の違い・異なる書き方）の場合は正解とします。
         ・ユーザーの回答が、正解のカテゴリを包含するような上位概念（抽象的、広義の語）の場合、不正解とします。
