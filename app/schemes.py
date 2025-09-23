@@ -44,7 +44,7 @@ class Res_Answer(BaseModel):
     time: datetime.datetime
     user: uuid.UUID
     nickname: str
-    judge: Literal["正解","不正解"]
+    judge: bool
     include_answer: bool
     answer: str
 

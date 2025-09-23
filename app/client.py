@@ -397,8 +397,8 @@ class GameClientControl(ft.Column):
         if self.game_is_over:
             return
 
-        if data.judge:
-            self._show_ai_response(f"判定: {data.judge}")
+        judge_text = get_string("judge_true") if data.judge else get_string("judge_false")
+        self._show_ai_response(get_string("judgment", judge=judge_text))
 
         self._add_formatted_message(data)
         if data.user == self.ws_client.user_id:
@@ -544,7 +544,7 @@ class GameClientControl(ft.Column):
             msg_type = msg_data.type
             is_own = msg_data.user == self.ws_client.user_id
 
-        builder = card_builders.get(msg_type)
+        builder = card_builders.get(msg_type or "")
         if not builder: return
 
         card = builder(msg_data)
@@ -605,10 +605,11 @@ class GameClientControl(ft.Column):
         else:
             card_items.append(ft.Text(get_string("hidden"), italic=True, color=ft.Colors.BLACK))
 
-        if data.judge:
+        if data.judge is not None:
+            judge_text = get_string("judge_true") if data.judge else get_string("judge_false")
             card_items.extend([
                 ft.Divider(height=5, color=ft.Colors.TRANSPARENT),
-                ft.Text(get_string("judgment", judge=data.judge), weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK)
+                ft.Text(get_string("judgment", judge=judge_text), weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK)
             ])
         return self._build_card_container(card_items, is_own)
 
@@ -642,7 +643,7 @@ class GameClientControl(ft.Column):
 
     def _show_error_dialog(self, title: str, content: str):
         def close_dialog(e):
-            self.page.close(dlg)
+            self.page.close(dlg) if self.page else None
 
         dlg = ft.AlertDialog(
             modal=True, title=ft.Text(title), content=ft.Text(content),
