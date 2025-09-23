@@ -1,6 +1,6 @@
 # Pyinstallerを使ったやり方
 cd app
-flet pack --add-data icon.ico -i icon.ico client.py
+flet pack --add-data icon.ico:icon.ico -i icon.ico client.py
 
 # fletのビルド機能でのやり方
 cd app
