@@ -1,5 +1,5 @@
 
-from typing import Literal, Optional, Union
+from typing import Literal, Optional, Union, TypeVar
 from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
@@ -78,51 +78,59 @@ class Ai_Agent:
 
             case _:
                 raise ValueError("geminiまたはopenaiを入力してください")
-
-    async def _generate(self, schema:type[BaseModel], system_prompt:str, text:str, propertyOrdering:list) -> BaseModel:
+    
+    T = TypeVar("T", bound=BaseModel)
+    async def _generate(self, schema:type[T], system_prompt:str, text:str, propertyOrdering:list) -> T:
         json_schema = schema.model_json_schema()
         json_schema["propertyOrdering"] = propertyOrdering
-        match self.ai_type:
-            case "gemini":
-                response = await self.gemini_client.aio.models.generate_content(
-                    model = self.model,
-                    contents = text,
-                    config = types.GenerateContentConfig(
-                        response_schema = json_schema,
-                        response_mime_type="application/json",
-                        system_instruction=system_prompt,
-                        temperature=0.1,
-                        #tools=[types.Tool(google_search=types.GoogleSearch())],
-                        thinking_config=types.ThinkingConfig(
-                            thinking_budget=512
+        
+        for attempt in range(3):
+            try:
+                match self.ai_type:
+                    case "gemini":
+                        response = await self.gemini_client.aio.models.generate_content(
+                            model = self.model,
+                            contents = text,
+                            config = types.GenerateContentConfig(
+                                response_schema = json_schema,
+                                response_mime_type="application/json",
+                                system_instruction=system_prompt,
+                                temperature=0.1,
+                                #tools=[types.Tool(google_search=types.GoogleSearch())],
+                                thinking_config=types.ThinkingConfig(
+                                    thinking_budget=512
+                                )
+                            )
                         )
-                    )
-                )
-                return schema.model_validate_json(response.text or "{}")
-            
-            case "openai":
-                json_schema["additionalProperties"] = False
-                response = await self.openai_client.chat.completions.create(
-                    model = self.model,
-                    messages = [
-                        {"role":"system", "content":system_prompt},
-                        {"role": "user", "content":text}
-                    ],
-                    verbosity="low",
-                    reasoning_effort="minimal",
-                    #temperature = 0.1,
-                    response_format = {
-                        "type":"json_schema",
-                        "json_schema":{
-                            "name":json_schema["title"],
-                            "strict":True,
-                            "schema":json_schema
-                        }
-                       }
-                )
-                return schema.model_validate_json(response.choices[0].message.content or "{}")
-            case _:
-                raise ValueError()
+                        return schema.model_validate_json(response.text or "{}")
+                    
+                    case "openai":
+                        json_schema["additionalProperties"] = False
+                        response = await self.openai_client.chat.completions.create(
+                            model = self.model,
+                            messages = [
+                                {"role":"system", "content":system_prompt},
+                                {"role": "user", "content":text}
+                            ],
+                            verbosity="low",
+                            reasoning_effort="minimal",
+                            #temperature = 0.1,
+                            response_format = {
+                                "type":"json_schema",
+                                "json_schema":{
+                                    "name":json_schema["title"],
+                                    "strict":True,
+                                    "schema":json_schema
+                                }
+                            }
+                        )
+                        return schema.model_validate_json(response.choices[0].message.content or "{}")
+                    case _:
+                        raise ValueError()
+            except Exception as e:
+                print(f"Attempt {attempt + 1} failed: {e}")
+                last_exception = e
+        raise last_exception or RuntimeError("Unknown error occurred in _generate method.")
     
     async def check_game_thema(self, answer:str) -> Check_game_thema:
         system_prompt = """あなたは単語・人物名当てゲームの判定システムです。
