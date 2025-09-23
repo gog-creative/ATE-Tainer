@@ -8,7 +8,7 @@ from openai import pydantic_function_tool
 from openai.types import ResponseFormatText
 from os import environ
 from dotenv import load_dotenv
-import json
+import time
 
 load_dotenv()
 
@@ -56,8 +56,8 @@ class Ai_Agent:
 
     #質問の返答スキーマ
     class Question_schema(BaseModel):
-        reply: str = Field(description="質問に対する返答（いいえ、、今はいいえ、それを含む、場合によってはい、など一言で）")
-        reason: str = Field(description="質問に対する返答（文章）。「正しいです」や「それは違います」、「今は違います」や「そういうものではありません。」など、臨機応変に一言文章で。\nプレイヤーに表示するため、答え・ヒントとなる関連ワードは使わずに「それは...」などで答えてください。")
+        reply: str = Field(description="質問に対する返答（No、Maybe、いいえ、今はいいえ、それを含む、場合によってはい、など一言で）")
+        reason: str = Field(description="質問に対する返答（文章）。「It is.」「It isn't.」や「Not at this time」、「正しいです」、「それは違います」、「今は違います」や「そういうものではありません。」など、臨機応変に一言文章で。\nプレイヤーに表示するため、答え・ヒントとなる関連ワードは使わずに「それは...」などで答えてください。")
         include_answer: bool = Field(description="その質問を他のプレイヤーが見たとき、それだけで明らかに答えが推測できてしまうかどうか（答えが含まれている場合など）")
 
     #回答の返答スキーマ
@@ -130,6 +130,7 @@ class Ai_Agent:
             except Exception as e:
                 print(f"Attempt {attempt + 1} failed: {e}")
                 last_exception = e
+                time.sleep(1)
         raise last_exception or RuntimeError("Unknown error occurred in _generate method.")
     
     async def check_game_thema(self, answer:str) -> Check_game_thema:
@@ -193,6 +194,6 @@ class Ai_Agent:
         ・ユーザーの回答が、正解のカテゴリを包含するような上位概念（抽象的、広義の語）の場合、不正解とします。
         ただしジャンル内で、一般的にそれが答えのみを指す通称として用いられる場合は正解とします。
         """
-        response = await self._generate(self.Answer_schema, system_prompt, question, ["reply","is_close"])
+        response = await self._generate(self.Answer_schema, system_prompt, question, ["is_correct", "is_close"])
         print(response)
         return self.Answer_schema.model_validate(response)
