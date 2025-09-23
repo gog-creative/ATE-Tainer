@@ -8,12 +8,17 @@ import datetime
 from typing import Callable, Any, List, Union
 import os
 import logging
-
+import sys
 from pydantic import ValidationError
 import schemes
 
 URL_DOMAIN = "atetainer.gog-lab.org"
 os.environ["debug"] = "True"
+
+def resource_path(relative_path):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path) # type: ignore
+    return os.path.join(os.path.abspath("."), relative_path)
 
 # ---------------------------------------------------------------------------- #
 # 1. WebSocket Client (Handles Network Communication)
@@ -148,7 +153,7 @@ class GameClientControl(ft.Column):
         
         self.title_text = ft.Text("ATE-Tainer", size=50, weight=ft.FontWeight.BOLD)
         self.subtitle_text = ft.Text("Gemini APIを活用したオリジナルのアキネイターゲーム", size=20)
-        self.version_text = ft.Text("build-20250922", color=ft.Colors.GREY, size=12)
+        self.version_text = ft.Text("build-20250923", color=ft.Colors.GREY, size=12)
         
         self.connect_column = ft.Column(
             [
@@ -294,34 +299,29 @@ class GameClientControl(ft.Column):
 
     # --- WebSocket Callback Handlers ---
     def _on_ws_open(self):
-        if self.page:
-            self.page.run_thread(self._add_raw_message_to_chat, f"接続しました。 User ID: {self.ws_client.user_id}")
+        self.page.run_thread(self._add_raw_message_to_chat, f"接続しました。 User ID: {self.ws_client.user_id}") if self.page else None
 
     def _on_ws_message(self, message: str):
-        if not self.page:
-            return
         try:
             event = schemes.WSEvent.model_validate({"root":json.loads(message)}).root
             
             handler = self._event_handlers.get(event.type)
             if handler:
-                self.page.run_thread(handler, event)
+                self.page.run_thread(handler, event) if self.page else None
             else:
                 print(f"No handler for event type: {event.type}")
 
         except (ValidationError, json.JSONDecodeError) as e:
-            self.page.run_thread(self._add_raw_message_to_chat, f"受信エラー: {message}")
+            self.page.run_thread(self._add_raw_message_to_chat, f"受信エラー: {message}") if self.page else None
             print(f"Error parsing message: {e}")
 
     def _on_ws_error(self, error: str):
-        if self.page:
-            self.page.run_thread(self._add_raw_message_to_chat, f"エラー: {error}")
+        self.page.run_thread(self._add_raw_message_to_chat, f"エラー: {error}") if self.page else None
 
     def _on_ws_close(self):
         self.countdown_stop_event.set()
-        if self.page:
-            self.page.run_thread(self._add_raw_message_to_chat, "切断しました。")
-            self.page.run_thread(self._handle_disconnect, None)
+        self.page.run_thread(self._add_raw_message_to_chat, "切断しました。") if self.page else None
+        self.page.run_thread(self._handle_disconnect, None) if self.page else None
 
     # --- Server Event Handlers ---
     def _handle_response(self, data: schemes.Response):
@@ -388,16 +388,14 @@ class GameClientControl(ft.Column):
         self._update_status_panel("ゲーム開始！", ft.Colors.GREEN_700)
         
         def fetch_status_and_start_countdown(game_id):
-            if not self.page:
-                return
             try:
                 api_url = f"https://{URL_DOMAIN}/{game_id}/?user_id={self.ws_client.user_id}"
                 response = httpx.get(api_url)
                 response.raise_for_status()
                 game_data = schemes.GameData_Res.model_validate(response.json())
-                self.page.run_thread(self._handle_status, game_data)
+                self.page.run_thread(self._handle_status, game_data) if self.page else None
             except Exception as e:
-                self.page.run_thread(self._add_raw_message_to_chat, f"タイマー開始エラー: {e}")
+                self.page.run_thread(self._add_raw_message_to_chat, f"タイマー開始エラー: {e}") if self.page else None
 
         if self.game_id_input.value:
             threading.Thread(target=fetch_status_and_start_countdown, args=(self.game_id_input.value,), daemon=True).start()
@@ -439,7 +437,7 @@ class GameClientControl(ft.Column):
 
     def _show_result_dialog(self, data: schemes.Result):
         def close_dialog(e):
-            self.page.close(dlg)
+            self.page.close(dlg) if self.page else None
 
         # Sort answerers by time
         sorted_answerers = sorted(data.correct_answerers, key=lambda x: x.answered_at or datetime.datetime.min)
@@ -479,8 +477,8 @@ class GameClientControl(ft.Column):
             actions=[ft.TextButton("閉じる", on_click=close_dialog)],
             actions_alignment=ft.MainAxisAlignment.END,
         )
-        self.page.open(dlg)
-        self.page.update()
+        self.page.open(dlg) if self.page else None
+        self.page.update() if self.page else None
 
     # --- Message & Card Builders ---
     def _add_raw_message_to_chat(self, text: str, color: str = ft.Colors.WHITE):
@@ -606,8 +604,8 @@ class GameClientControl(ft.Column):
             actions=[ft.TextButton("OK", on_click=close_dialog)],
             actions_alignment=ft.MainAxisAlignment.END,
         )
-        self.page.open(dlg)
-        self.page.update()
+        self.page.open(dlg) if self.page else None
+        self.page.update() if self.page else None
 
     def _start_countdown(self, end_time_str: str):
         if self.countdown_thread and self.countdown_thread.is_alive():
@@ -639,6 +637,8 @@ def main(page: ft.Page):
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.theme_mode = ft.ThemeMode.DARK
+    print(resource_path("icon.ico"))
+    page.window.icon = resource_path("icon.ico")
 
     app = GameClientControl(page)
     page.add(app)
