@@ -1,0 +1,7 @@
+openai
+google-genai
+fastapi
+websocket-client
+pydantic
+uvicorn
+dotenv

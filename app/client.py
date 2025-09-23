@@ -11,6 +11,7 @@ import logging
 import sys
 from pydantic import ValidationError
 import schemes
+from localization import get_string, set_language, get_available_languages, get_current_language
 
 URL_DOMAIN = "atetainer.gog-lab.org"
 os.environ["debug"] = "True"
@@ -147,13 +148,21 @@ class GameClientControl(ft.Column):
 
     def _init_ui_components(self):
         """Create all UI components."""
-        self.game_id_input = ft.TextField(label="ゲームID", width=250, input_filter=ft.InputFilter(allow=True, regex_string=r"[0-9]"))
-        self.nickname_input = ft.TextField(label="ニックネーム", width=250)
-        self.connect_button = ft.FilledButton("接続", on_click=self._connect_click, width=250,style=ft.ButtonStyle(shape=ft.StadiumBorder(), padding=20))
+        self.game_id_input = ft.TextField(width=250, input_filter=ft.InputFilter(allow=True, regex_string=r"[0-9]"))
+        self.nickname_input = ft.TextField(width=250)
+        self.connect_button = ft.FilledButton(on_click=self._connect_click, width=250,style=ft.ButtonStyle(shape=ft.StadiumBorder(), padding=20))
         
         self.title_text = ft.Text("ATE-Tainer", size=50, weight=ft.FontWeight.BOLD)
-        self.subtitle_text = ft.Text("Gemini APIを活用したオリジナルのアキネイターゲーム", size=20)
+        self.subtitle_text = ft.Text(size=20)
         self.version_text = ft.Text("build-20250923", color=ft.Colors.GREY, size=12)
+        
+        languages = get_available_languages()
+        self.language_dropdown = ft.Dropdown(
+            width=250,
+            options=[ft.dropdown.Option(key=lang_code, text=display_name) for lang_code, display_name in languages.items()],
+            value=get_current_language(),
+            on_change=self._language_changed,
+        )
         
         self.connect_column = ft.Column(
             [
@@ -163,6 +172,7 @@ class GameClientControl(ft.Column):
                 self.game_id_input,
                 self.nickname_input,
                 self.connect_button,
+                self.language_dropdown,
                 ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
                 self.version_text,
             ],
@@ -171,7 +181,7 @@ class GameClientControl(ft.Column):
             spacing=15
         )
 
-        self.disconnect_button = ft.ElevatedButton("切断", on_click=self._disconnect_click)
+        self.disconnect_button = ft.ElevatedButton(on_click=self._disconnect_click)
         self.timer_text = ft.Text("--:--", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_GREY_800)
         
         self.status_text = ft.Text(weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE, text_align=ft.TextAlign.CENTER)
@@ -190,9 +200,9 @@ class GameClientControl(ft.Column):
             spacing=15
         )
 
-        self.message_input = ft.TextField(label="質問または回答", expand=True, disabled=True, on_submit=self._send_click)
-        self.qa_mode_selector = ft.CupertinoSlidingSegmentedButton(selected_index=0, controls=[ft.Text("質問"), ft.Text("回答")], disabled=True)
-        self.send_button = ft.ElevatedButton("送信", on_click=self._send_click, disabled=True)
+        self.message_input = ft.TextField(expand=True, disabled=True, on_submit=self._send_click)
+        self.qa_mode_selector = ft.CupertinoSlidingSegmentedButton(selected_index=0, controls=[ft.Text(), ft.Text()], disabled=True)
+        self.send_button = ft.ElevatedButton(on_click=self._send_click, disabled=True)
         self.chat_input_row = ft.Row([self.message_input, self.qa_mode_selector, self.send_button], spacing=15, visible=False)
 
         self.chat_area = ft.ListView(expand=True, spacing=15, auto_scroll=True)
@@ -210,14 +220,43 @@ class GameClientControl(ft.Column):
             margin=ft.margin.only(bottom=10)
         )
         
-        self.ready_button = ft.ElevatedButton("準備完了", on_click=self._ready_click, width=250, style=ft.ButtonStyle(shape=ft.StadiumBorder(), padding=20))
+        self.ready_button = ft.ElevatedButton(on_click=self._ready_click, width=250, style=ft.ButtonStyle(shape=ft.StadiumBorder(), padding=20))
         self.ready_row = ft.Row([self.ready_button], alignment=ft.MainAxisAlignment.CENTER, visible=False)
 
         self.main_content_column = ft.Column([self.ai_response_panel, self.chat_area_container, self.chat_input_row, self.ready_row], expand=True)
 
         self.genre_text = ft.Text()
         self.participants_list = ft.ListView(spacing=5, expand=False)
-        self.side_panel = ft.Container(content=ft.Column([ft.Text("ゲーム情報", size=20, weight=ft.FontWeight.BOLD), ft.Divider(), ft.Text("ジャンル:", weight=ft.FontWeight.BOLD), self.genre_text, ft.Divider(), ft.Text("参加者:", weight=ft.FontWeight.BOLD), self.participants_list]), width=250, padding=15, border=ft.border.all(1, ft.Colors.GREY), border_radius=5)
+        self.side_panel_game_info_title = ft.Text(size=20, weight=ft.FontWeight.BOLD)
+        self.side_panel_genre_title = ft.Text(weight=ft.FontWeight.BOLD)
+        self.side_panel_participants_title = ft.Text(weight=ft.FontWeight.BOLD)
+        self.side_panel = ft.Container(content=ft.Column([self.side_panel_game_info_title, ft.Divider(), self.side_panel_genre_title, self.genre_text, ft.Divider(), self.side_panel_participants_title, self.participants_list]), width=250, padding=15, border=ft.border.all(1, ft.Colors.GREY), border_radius=5)
+        
+        self._update_ui_texts()
+
+    def _update_ui_texts(self):
+        """Update all UI component texts based on the current language."""
+        self.page.title = get_string("app_title")
+        self.subtitle_text.value = get_string("app_subtitle")
+        self.game_id_input.label = get_string("game_id")
+        self.nickname_input.label = get_string("nickname")
+        self.connect_button.text = get_string("connect")
+        self.disconnect_button.text = get_string("disconnect")
+        self.message_input.label = get_string("question_or_answer")
+        self.qa_mode_selector.controls[0].value = get_string("question")
+        self.qa_mode_selector.controls[1].value = get_string("answer")
+        self.send_button.text = get_string("send")
+        self.ai_response_text.value = get_string("ai_response_placeholder")
+        self.ready_button.text = get_string("ready")
+        self.side_panel_game_info_title.value = get_string("game_info")
+        self.side_panel_genre_title.value = get_string("genre")
+        self.side_panel_participants_title.value = get_string("participants")
+        self.update()
+
+    def _language_changed(self, e):
+        """Handle language selection change."""
+        set_language(e.control.value)
+        self._update_ui_texts()
 
     # --- UI Event Handlers ---
     def _connect_click(self, e):
@@ -225,10 +264,10 @@ class GameClientControl(ft.Column):
         game_id = self.game_id_input.value or "".strip()
         nickname = self.nickname_input.value
         if not game_id or not nickname:
-            self._add_raw_message_to_chat("ゲームIDとニックネームを入力してください。")
+            self._add_raw_message_to_chat(get_string("error_game_id_nickname_required"))
             return
 
-        self.ai_response_text.value = "ここにAIからの回答が表示されます"
+        self.ai_response_text.value = get_string("ai_response_placeholder")
         self.status_panel.visible = False
         self.chat_area.controls.clear()
         self.update()
@@ -249,15 +288,15 @@ class GameClientControl(ft.Column):
 
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code == 404:
-                self._show_error_dialog("エラー", f"HTTPエラー: {exc.response.status_code} - 指定されたゲームは存在ません。")
+                self._show_error_dialog(get_string("error_dialog_title"), get_string("http_error_404"))
             else:
-                self._show_error_dialog("エラー", f"HTTPエラー: {exc.response.status_code} - サーバーエラーが発生しました。")
+                self._show_error_dialog(get_string("error_dialog_title"), get_string("http_error_server", status_code=exc.response.status_code))
         except httpx.RequestError as exc:
-            self._show_error_dialog("接続エラー", f"サーバーに接続できませんでした。ネットワーク接続を確認してください。{exc}")
+            self._show_error_dialog(get_string("connection_error_dialog_title"), get_string("connection_error_dialog_content", exc=exc))
             print(f"RequestError: {exc}")
         except ValidationError as exc:
-            error_message = f"サーバーからのデータ形式が不正です。"
-            self._show_error_dialog("データエラー", error_message)
+            error_message = get_string("data_error_dialog_content")
+            self._show_error_dialog(get_string("data_error_dialog_title"), error_message)
             print(f"ValidationError: {exc}")
             if 'response' in locals() and response:
                 print("Received data:", response.text)
@@ -269,7 +308,7 @@ class GameClientControl(ft.Column):
     def _ready_click(self, e):
         self.ws_client.send_message(json.dumps({"type": "ready", "user": str(self.ws_client.user_id)}))
         self.ready_button.disabled = True
-        self._add_raw_message_to_chat("準備完了を送信しました。")
+        self._add_raw_message_to_chat(get_string("ready_sent"))
         self.update()
 
     def _send_click(self, e):
@@ -299,7 +338,7 @@ class GameClientControl(ft.Column):
 
     # --- WebSocket Callback Handlers ---
     def _on_ws_open(self):
-        self.page.run_thread(self._add_raw_message_to_chat, f"接続しました。 User ID: {self.ws_client.user_id}") if self.page else None
+        self.page.run_thread(self._add_raw_message_to_chat, get_string("connected", user_id=self.ws_client.user_id)) if self.page else None
 
     def _on_ws_message(self, message: str):
         try:
@@ -312,15 +351,15 @@ class GameClientControl(ft.Column):
                 print(f"No handler for event type: {event.type}")
 
         except (ValidationError, json.JSONDecodeError) as e:
-            self.page.run_thread(self._add_raw_message_to_chat, f"受信エラー: {message}") if self.page else None
+            self.page.run_thread(self._add_raw_message_to_chat, get_string("receive_error", message=message)) if self.page else None
             print(f"Error parsing message: {e}")
 
     def _on_ws_error(self, error: str):
-        self.page.run_thread(self._add_raw_message_to_chat, f"エラー: {error}") if self.page else None
+        self.page.run_thread(self._add_raw_message_to_chat, get_string("connection_error", error=error)) if self.page else None
 
     def _on_ws_close(self):
         self.countdown_stop_event.set()
-        self.page.run_thread(self._add_raw_message_to_chat, "切断しました。") if self.page else None
+        self.page.run_thread(self._add_raw_message_to_chat, get_string("disconnected")) if self.page else None
         self.page.run_thread(self._handle_disconnect, None) if self.page else None
 
     # --- Server Event Handlers ---
@@ -375,8 +414,8 @@ class GameClientControl(ft.Column):
         self.countdown_stop_event.set()
         self.game_id_input.value = str(data.game_id)
         self.chat_area.controls.clear()
-        self._add_raw_message_to_chat(f"--- 新しいゲーム ({data.game_id}) が作成されました ---", color=ft.Colors.BLUE)
-        self._add_raw_message_to_chat("準備ができたら、もう一度「接続」ボタンを押してください。")
+        self._add_raw_message_to_chat(get_string("new_game_created", game_id=data.game_id), color=ft.Colors.BLUE)
+        self._add_raw_message_to_chat(get_string("press_connect_again"))
         self.ws_client.disconnect()
         self.update()
 
@@ -385,7 +424,7 @@ class GameClientControl(ft.Column):
         self.chat_input_row.visible = True
         self.ready_row.visible = False
         self.ai_response_text.value = ""
-        self._update_status_panel("ゲーム開始！", ft.Colors.GREEN_700)
+        self._update_status_panel(get_string("status_game_start"), ft.Colors.GREEN_700)
         
         def fetch_status_and_start_countdown(game_id):
             try:
@@ -402,7 +441,7 @@ class GameClientControl(ft.Column):
         self.update()
 
     def _handle_status(self, data: schemes.GameData_Res):
-        self.genre_text.value = data.genre or "未設定"
+        self.genre_text.value = data.genre or get_string("unassigned")
         self.participants_list.controls.clear()
         for nickname in data.users.values():
             self.participants_list.controls.append(ft.Text(f"- {nickname}"))
@@ -411,26 +450,32 @@ class GameClientControl(ft.Column):
             self._set_game_controls_enabled(True)
             self.chat_input_row.visible = True
             self.ready_row.visible = False
-            self._update_status_panel("ゲーム中", ft.Colors.GREEN_700)
+            self._update_status_panel(get_string("status_playing"), ft.Colors.GREEN_700)
             self._start_countdown(data.end_time.isoformat())
         else:
             self._set_game_controls_enabled(False)
             self.chat_input_row.visible = False
-            state_text = {"waiting": "待機中", "finished": "終了済み"}.get(data.status, data.status)
+            state_text = {
+                "waiting": get_string("status_waiting"), 
+                "finished": get_string("status_finished")
+            }.get(data.status, data.status)
+            
+            status_prefix = get_string("status_prefix_current")
+            
             if data.status == "waiting":
                 self.ready_row.visible = True
                 self.ready_button.disabled = False
-                self._update_status_panel(f"現在 {state_text}", ft.Colors.AMBER_700)
+                self._update_status_panel(f"{status_prefix}{state_text}", ft.Colors.AMBER_700)
             else: # finished
                 self.ready_row.visible = False
-                self._update_status_panel(f"現在 {state_text}", ft.Colors.RED_700)
+                self._update_status_panel(f"{status_prefix}{state_text}", ft.Colors.RED_700)
         self.update()
 
     def _handle_game_end(self, data: Union[schemes.Event, schemes.Result]):
         self.game_is_over = True
         self.countdown_stop_event.set()
         self._set_game_controls_enabled(False)
-        self._update_status_panel("入力時間終了", ft.Colors.RED_700)
+        self._update_status_panel(get_string("status_time_up"), ft.Colors.RED_700)
         if isinstance(data, schemes.Result):
             self._show_result_dialog(data)
         self.update()
@@ -455,26 +500,26 @@ class GameClientControl(ft.Column):
 
         dlg = ft.AlertDialog(
             modal=True,
-            title=ft.Text(f"結果発表！正解は「{data.correct_answer}」でした！"),
+            title=ft.Text(get_string("result_dialog_title", answer=data.correct_answer)),
             content=ft.Column(
                 [
                     ft.Text(data.description, size=16),
                     ft.Divider(),
-                    ft.Text("ランキング", size=20, weight=ft.FontWeight.BOLD),
+                    ft.Text(get_string("result_dialog_ranking"), size=20, weight=ft.FontWeight.BOLD),
                     ft.DataTable(
                         columns=[
-                            ft.DataColumn(ft.Text("順位")),
-                            ft.DataColumn(ft.Text("ニックネーム")),
-                            ft.DataColumn(ft.Text("解答時間")),
+                            ft.DataColumn(ft.Text(get_string("result_column_rank"))),
+                            ft.DataColumn(ft.Text(get_string("result_column_nickname"))),
+                            ft.DataColumn(ft.Text(get_string("result_column_time"))),
                         ],
                         rows=rows,
-                    ) if rows else ft.Text("正解者はいませんでした。"),
+                    ) if rows else ft.Text(get_string("result_dialog_no_correct_answerers")),
                 ],
                 tight=True,
                 width=500,
                 scroll=ft.ScrollMode.ADAPTIVE,
             ),
-            actions=[ft.TextButton("閉じる", on_click=close_dialog)],
+            actions=[ft.TextButton(get_string("result_dialog_close_button"), on_click=close_dialog)],
             actions_alignment=ft.MainAxisAlignment.END,
         )
         self.page.open(dlg) if self.page else None
@@ -521,49 +566,49 @@ class GameClientControl(ft.Column):
         )
 
     def _build_loading_card(self, data: dict) -> ft.Container:
-        display_name = "あなた"
+        display_name = get_string("you")
         question = data.get("question", "")
         card_items = [
-            ft.Text(f"{display_name}の質問", weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
+            ft.Text(get_string("question_from", name=display_name), weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
             ft.Text(f'''{question}''', color=ft.Colors.BLACK),
             ft.Divider(height=5, color=ft.Colors.TRANSPARENT),
-            ft.Text("AIの応答: 読み込み中...", italic=True, color=ft.Colors.BLACK)
+            ft.Text(get_string("loading_ai_response"), italic=True, color=ft.Colors.BLACK)
         ]
         return self._build_card_container(card_items, is_own=True)
 
     def _build_question_card(self, data: schemes.Res_Question) -> ft.Container:
         is_own = data.user == self.ws_client.user_id
-        display_name = "あなた" if is_own else data.nickname
+        display_name = get_string("you") if is_own else data.nickname
         card_items: list[ft.Control] = [
-            ft.Text(f"{display_name}の質問", weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
+            ft.Text(get_string("question_from", name=display_name), weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
         ]
         if not data.include_answer:
             card_items.append(ft.Text(f"{data.question}", color=ft.Colors.BLACK))
         else:
-            card_items.append(ft.Text("（非表示）", italic=True, color=ft.Colors.BLACK))
+            card_items.append(ft.Text(get_string("hidden"), italic=True, color=ft.Colors.BLACK))
 
         if data.title:
             card_items.extend([
                 ft.Divider(height=5, color=ft.Colors.TRANSPARENT),
-                ft.Text(f"AIの応答: {data.title} ({data.reply})", color=ft.Colors.BLACK)
+                ft.Text(get_string("ai_response", title=data.title, reply=data.reply), color=ft.Colors.BLACK)
             ])
         return self._build_card_container(card_items, is_own)
 
     def _build_answer_card(self, data: schemes.Res_Answer) -> ft.Container:
         is_own = data.user == self.ws_client.user_id
-        display_name = "あなた" if is_own else data.nickname
+        display_name = get_string("you") if is_own else data.nickname
         card_items = [
-            ft.Text(f"{display_name}の回答", weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
+            ft.Text(get_string("answer_from", name=display_name), weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
         ]
         if not data.include_answer:
             card_items.append(ft.Text(f"'''{data.answer}'''", color=ft.Colors.BLACK))
         else:
-            card_items.append(ft.Text("（非表示）", italic=True, color=ft.Colors.BLACK))
+            card_items.append(ft.Text(get_string("hidden"), italic=True, color=ft.Colors.BLACK))
 
         if data.judge:
             card_items.extend([
                 ft.Divider(height=5, color=ft.Colors.TRANSPARENT),
-                ft.Text(f"判定: {data.judge}", weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK)
+                ft.Text(get_string("judgment", judge=data.judge), weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK)
             ])
         return self._build_card_container(card_items, is_own)
 
@@ -601,7 +646,7 @@ class GameClientControl(ft.Column):
 
         dlg = ft.AlertDialog(
             modal=True, title=ft.Text(title), content=ft.Text(content),
-            actions=[ft.TextButton("OK", on_click=close_dialog)],
+            actions=[ft.TextButton(get_string("ok"), on_click=close_dialog)],
             actions_alignment=ft.MainAxisAlignment.END,
         )
         self.page.open(dlg) if self.page else None
@@ -633,7 +678,7 @@ class GameClientControl(ft.Column):
 # ---------------------------------------------------------------------------- #
 def main(page: ft.Page):
     """Initializes and runs the Flet application."""
-    page.title = "ATE-Tainer - AIアキネーターゲーム"
+    page.title = get_string("app_title")
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.theme_mode = ft.ThemeMode.DARK
