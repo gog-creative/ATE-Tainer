@@ -8,4 +8,4 @@ app/build/*
 /build/*
 !windows
 client.spec
-installer.iss
+setup.iss

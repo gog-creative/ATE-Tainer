@@ -207,9 +207,9 @@ async def websocket_broadcast(ws: WebSocket, game_id: int):
                     time=datetime.datetime.now(TZ),
                     user=user.user_id,
                     nickname=user.nickname,
-                    include_answer=res.is_close,
+                    include_answer=res.is_close or res.is_correct,
                     judge=res.is_correct,
-                    answer=data.text,
+                    answer=data.text if not res.is_correct or res.is_close else "",
                 )
 
                 # 配信

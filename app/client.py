@@ -600,10 +600,10 @@ class GameClientControl(ft.Column):
         card_items = [
             ft.Text(get_string("answer_from", name=display_name), weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
         ]
-        if not data.include_answer:
-            card_items.append(ft.Text(f"'''{data.answer}'''", color=ft.Colors.BLACK))
-        else:
+        if data.judge or data.include_answer:
             card_items.append(ft.Text(get_string("hidden"), italic=True, color=ft.Colors.BLACK))
+        else:
+            card_items.append(ft.Text(f"'''{data.answer}'''", color=ft.Colors.BLACK))
 
         if data.judge is not None:
             judge_text = get_string("judge_true") if data.judge else get_string("judge_false")
