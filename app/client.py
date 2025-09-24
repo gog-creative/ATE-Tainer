@@ -274,6 +274,7 @@ class GameClientControl(ft.Column):
 
     # --- UI Event Handlers ---
     def _connect_click(self, e):
+        self.is_ready_sent = False
         self.game_is_over = False
         game_id = self.game_id_input.value or "".strip()
         nickname = self.nickname_input.value
@@ -466,8 +467,10 @@ class GameClientControl(ft.Column):
 
     def _handle_status(self, data: schemes.GameData_Res):
         self.genre_text.value = data.genre or get_string("unassigned")
-        self.question_limit_text.value = get_string("question_limit", count=data.question_limit)
-        self.answer_limit_text.value = get_string("answer_limit", count=data.ans_limit)
+        # ゲームプレイ中はWebSocketからの情報で更新するため、ここでは更新しない
+        if data.status != "playing":
+            self.question_limit_text.value = get_string("question_limit", count=data.question_limit)
+            self.answer_limit_text.value = get_string("answer_limit", count=data.ans_limit)
         self.participants_list.controls.clear()
         for nickname in data.users.values():
             self.participants_list.controls.append(ft.Text(f"- {nickname}"))
