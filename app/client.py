@@ -240,6 +240,8 @@ class GameClientControl(ft.Column):
         self.side_panel = ft.Container(content=ft.Column([
             self.side_panel_game_info_title, ft.Divider(), 
             self.side_panel_genre_title, self.genre_text, 
+            self.question_limit_text,
+            self.answer_limit_text,
             ft.Divider(), 
             self.side_panel_participants_title, self.participants_list
         ]), width=250, padding=15, border=ft.border.all(1, ft.Colors.GREY), border_radius=5)
@@ -405,6 +407,7 @@ class GameClientControl(ft.Column):
         if data.user == self.ws_client.user_id:
             self.last_question_sent = None
             self._set_game_controls_enabled(True)
+            self.question_limit_text.value = get_string("question_limit", count=data.remaining_count)
 
         if data.title:
             response_text = f"{data.title} \n{data.reply}"
@@ -423,6 +426,7 @@ class GameClientControl(ft.Column):
         self._add_formatted_message(data)
         if data.user == self.ws_client.user_id:
             self._set_game_controls_enabled(True)
+            self.answer_limit_text.value = get_string("answer_limit", count=data.remaining_count)
         self.update()
 
     def _handle_disconnect(self, data: Any):
@@ -462,6 +466,8 @@ class GameClientControl(ft.Column):
 
     def _handle_status(self, data: schemes.GameData_Res):
         self.genre_text.value = data.genre or get_string("unassigned")
+        self.question_limit_text.value = get_string("question_limit", count=data.question_limit)
+        self.answer_limit_text.value = get_string("answer_limit", count=data.ans_limit)
         self.participants_list.controls.clear()
         for nickname in data.users.values():
             self.participants_list.controls.append(ft.Text(f"- {nickname}"))
@@ -505,16 +511,23 @@ class GameClientControl(ft.Column):
             self.page.close(dlg) if self.page else None
 
         # Sort answerers by time
-        sorted_answerers = sorted(data.correct_answerers, key=lambda x: x.answered_at or datetime.datetime.min)
+        sorted_answerers = sorted(data.correct_answerers, key=lambda x: x.answer_time)
 
         # Create data rows
         rows = []
         for i, answerer in enumerate(sorted_answerers):
+            # timedeltaを分:秒.ミリ秒の形式にフォーマット
+            total_seconds = answerer.answer_time.total_seconds()
+            minutes = int(total_seconds // 60)
+            seconds = int(total_seconds % 60)
+            milliseconds = int((total_seconds - int(total_seconds)) * 100)
+            time_str = f"{minutes:02d}分{seconds:02d}秒{milliseconds:02d}"
+
             rows.append(
                 ft.DataRow(cells=[
                     ft.DataCell(ft.Text(str(i + 1))),
                     ft.DataCell(ft.Text(answerer.nickname)),
-                    ft.DataCell(ft.Text(answerer.answered_at.strftime('%H:%M:%S') if answerer.answered_at else "時刻不明")),
+                    ft.DataCell(ft.Text(time_str)),
                 ])
             )
 
@@ -626,8 +639,6 @@ class GameClientControl(ft.Column):
         card_items: list[ft.Control] = [
             ft.Text(get_string("question_from", name=display_name), weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
         ]
-        if hasattr(data, "remaining_count"):
-            card_items.append(ft.Text(get_string("remaining_questions", count=data.remaining_count), color=ft.Colors.BLACK))
         if not data.include_answer:
             card_items.append(ft.Text(f"{data.question}", color=ft.Colors.BLACK))
         else:
@@ -646,8 +657,6 @@ class GameClientControl(ft.Column):
         card_items = [
             ft.Text(get_string("answer_from", name=display_name), weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
         ]
-        if hasattr(data, "remaining_count"):
-            card_items.append(ft.Text(get_string("remaining_answers", count=data.remaining_count), color=ft.Colors.BLACK))
         if data.judge or data.include_answer:
             card_items.append(ft.Text(get_string("hidden"), italic=True, color=ft.Colors.BLACK))
         else:

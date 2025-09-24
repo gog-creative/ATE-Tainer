@@ -18,6 +18,8 @@ translations = {
         "game_info": "ゲーム情報",
         "genre": "ジャンル:",
         "participants": "参加者:",
+        "question_limit": "質問残り: {count}回",
+        "answer_limit": "回答残り: {count}回",
         "unassigned": "未設定",
         "error_game_id_nickname_required": "ゲームIDとニックネームを入力してください。",
         "status_prefix_current": "現在 ",
@@ -57,8 +59,6 @@ translations = {
         "result_column_rank": "順位",
         "result_column_nickname": "ニックネーム",
         "result_column_time": "解答時間",
-        "remaining_questions": "残り質問回数: {count}",
-        "remaining_answers": "残り回答回数: {count}",
     },
     "en": {
         "language_display": "English - 英語 🇺🇸",
@@ -77,6 +77,8 @@ translations = {
         "game_info": "Game Info",
         "genre": "Genre:",
         "participants": "Participants:",
+        "question_limit": "Questions Remaining: {count}",
+        "answer_limit": "Answers Remaining: {count}",
         "unassigned": "Unassigned",
         "error_game_id_nickname_required": "Please enter Game ID and Nickname.",
         "status_prefix_current": "Current status: ",
@@ -116,8 +118,6 @@ translations = {
         "result_column_rank": "Rank",
         "result_column_nickname": "Nickname",
         "result_column_time": "Time",
-        "remaining_questions": "Remaining Questions: {count}",
-        "remaining_answers": "Remaining Answers: {count}",
     }
 }
 

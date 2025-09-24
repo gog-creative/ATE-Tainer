@@ -57,7 +57,7 @@ class Event(BaseModel):
 class CorrectAnswerer(BaseModel):
     user_id:uuid.UUID
     nickname: str
-    answered_at: Optional[datetime.datetime]
+    answer_time: datetime.timedelta
 
 class Result(BaseModel):
     type: Literal["result"] = "result"

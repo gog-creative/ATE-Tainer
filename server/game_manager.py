@@ -170,7 +170,7 @@ class Game_data:
                     description=self.answer_description,
                     correct_answerers=[
                         schemes.CorrectAnswerer(
-                            user_id=user.user_id, nickname=user.nickname, answered_at=user.answered_at
+                            user_id=user.user_id, nickname=user.nickname, answer_time=user.answered_at - self.start_time
                         )
                         for user in self.correct_answerer
                     ],
