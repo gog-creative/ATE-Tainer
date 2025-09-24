@@ -57,6 +57,8 @@ translations = {
         "result_column_rank": "順位",
         "result_column_nickname": "ニックネーム",
         "result_column_time": "解答時間",
+        "remaining_questions": "残り質問回数: {count}",
+        "remaining_answers": "残り回答回数: {count}",
     },
     "en": {
         "language_display": "English - 英語 🇺🇸",
@@ -114,6 +116,8 @@ translations = {
         "result_column_rank": "Rank",
         "result_column_nickname": "Nickname",
         "result_column_time": "Time",
+        "remaining_questions": "Remaining Questions: {count}",
+        "remaining_answers": "Remaining Answers: {count}",
     }
 }
 

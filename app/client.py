@@ -107,6 +107,9 @@ class GameClientControl(ft.Column):
         )
         self.countdown_thread = None
         self.countdown_stop_event = threading.Event()
+        self.update_thread = None
+        self.update_stop_event = threading.Event()
+        self.is_ready_sent = False
         self.last_question_sent = None
         self.game_is_over = False
 
@@ -154,7 +157,7 @@ class GameClientControl(ft.Column):
         
         self.title_text = ft.Text("ATE-Tainer", size=50, weight=ft.FontWeight.BOLD)
         self.subtitle_text = ft.Text(size=20)
-        self.version_text = ft.Text("build-20250923", color=ft.Colors.GREY, size=12)
+        self.version_text = ft.Text("build-20250924 (2.0.4.0)", color=ft.Colors.GREY, size=12)
         
         languages = get_available_languages()
         self.language_dropdown = ft.Dropdown(
@@ -226,11 +229,20 @@ class GameClientControl(ft.Column):
         self.main_content_column = ft.Column([self.ai_response_panel, self.chat_area_container, self.chat_input_row, self.ready_row], expand=True)
 
         self.genre_text = ft.Text()
+        self.question_limit_text = ft.Text()
+        self.answer_limit_text = ft.Text()
         self.participants_list = ft.ListView(spacing=5, expand=False)
         self.side_panel_game_info_title = ft.Text(size=20, weight=ft.FontWeight.BOLD)
         self.side_panel_genre_title = ft.Text(weight=ft.FontWeight.BOLD)
+        self.side_panel_question_limit_title = ft.Text(weight=ft.FontWeight.BOLD)
+        self.side_panel_answer_limit_title = ft.Text(weight=ft.FontWeight.BOLD)
         self.side_panel_participants_title = ft.Text(weight=ft.FontWeight.BOLD)
-        self.side_panel = ft.Container(content=ft.Column([self.side_panel_game_info_title, ft.Divider(), self.side_panel_genre_title, self.genre_text, ft.Divider(), self.side_panel_participants_title, self.participants_list]), width=250, padding=15, border=ft.border.all(1, ft.Colors.GREY), border_radius=5)
+        self.side_panel = ft.Container(content=ft.Column([
+            self.side_panel_game_info_title, ft.Divider(), 
+            self.side_panel_genre_title, self.genre_text, 
+            ft.Divider(), 
+            self.side_panel_participants_title, self.participants_list
+        ]), width=250, padding=15, border=ft.border.all(1, ft.Colors.GREY), border_radius=5)
         
         self._update_ui_texts()
 
@@ -286,6 +298,11 @@ class GameClientControl(ft.Column):
             self.ws_client.connect(game_id, nickname)
             self._set_ui_for_connected(True)
 
+            # Start periodic updates
+            self.update_stop_event.clear()
+            self.update_thread = threading.Thread(target=self._periodic_update_logic, daemon=True)
+            self.update_thread.start()
+
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code == 404:
                 self._show_error_dialog(get_string("error_dialog_title"), get_string("http_error_404"))
@@ -302,12 +319,14 @@ class GameClientControl(ft.Column):
                 print("Received data:", response.text)
 
     def _disconnect_click(self, e):
+        self.update_stop_event.set()
         self.ws_client.disconnect()
         self._set_ui_for_connected(False)
 
     def _ready_click(self, e):
         self.ws_client.send_message(json.dumps({"type": "ready", "user": str(self.ws_client.user_id)}))
         self.ready_button.disabled = True
+        self.is_ready_sent = True
         self._add_raw_message_to_chat(get_string("ready_sent"))
         self.update()
 
@@ -359,6 +378,7 @@ class GameClientControl(ft.Column):
 
     def _on_ws_close(self):
         self.countdown_stop_event.set()
+        self.update_stop_event.set()
         self.page.run_thread(self._add_raw_message_to_chat, get_string("disconnected")) if self.page else None
         self.page.run_thread(self._handle_disconnect, None) if self.page else None
 
@@ -464,7 +484,7 @@ class GameClientControl(ft.Column):
             
             if data.status == "waiting":
                 self.ready_row.visible = True
-                self.ready_button.disabled = False
+                self.ready_button.disabled = self.is_ready_sent
                 self._update_status_panel(f"{status_prefix}{state_text}", ft.Colors.AMBER_700)
             else: # finished
                 self.ready_row.visible = False
@@ -525,6 +545,30 @@ class GameClientControl(ft.Column):
         self.page.open(dlg) if self.page else None
         self.page.update() if self.page else None
 
+    def _periodic_update_logic(self):
+        """Periodically fetches game data and updates the UI."""
+        while not self.update_stop_event.wait(5):  # Wait for 5 seconds
+            if not self.ws_client.is_connected:
+                break
+            try:
+                game_id = self.game_id_input.value
+                if not game_id: continue
+
+                api_url = f"https://{URL_DOMAIN}/{game_id}/?user_id={self.ws_client.user_id}"
+                response = httpx.get(api_url)
+                response.raise_for_status()
+                game_data = schemes.GameData_Res.model_validate(response.json())
+                
+                if self.page:
+                    self.page.run_thread(self._handle_status, game_data)
+
+            except httpx.HTTPStatusError as exc:
+                # Game might have ended and been removed, stop polling.
+                if exc.response.status_code == 404:
+                    break
+            except Exception as e:
+                print(f"Error during periodic update: {e}")
+
     # --- Message & Card Builders ---
     def _add_raw_message_to_chat(self, text: str, color: str = ft.Colors.WHITE):
         self.chat_area.controls.append(ft.Container(ft.Text(text, color=color, weight=ft.FontWeight.BOLD)))
@@ -582,6 +626,8 @@ class GameClientControl(ft.Column):
         card_items: list[ft.Control] = [
             ft.Text(get_string("question_from", name=display_name), weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
         ]
+        if hasattr(data, "remaining_count"):
+            card_items.append(ft.Text(get_string("remaining_questions", count=data.remaining_count), color=ft.Colors.BLACK))
         if not data.include_answer:
             card_items.append(ft.Text(f"{data.question}", color=ft.Colors.BLACK))
         else:
@@ -600,6 +646,8 @@ class GameClientControl(ft.Column):
         card_items = [
             ft.Text(get_string("answer_from", name=display_name), weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
         ]
+        if hasattr(data, "remaining_count"):
+            card_items.append(ft.Text(get_string("remaining_answers", count=data.remaining_count), color=ft.Colors.BLACK))
         if data.judge or data.include_answer:
             card_items.append(ft.Text(get_string("hidden"), italic=True, color=ft.Colors.BLACK))
         else:

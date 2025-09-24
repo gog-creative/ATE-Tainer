@@ -98,7 +98,7 @@ class Game_data:
         )
 
     async def check_all_ready(self):
-        if len(self.users) > 0 and all(user.is_ready for user in self.users.values()):
+        if len(self.users) > 0 and all(self.users[user_uuid].is_ready for user_uuid in self.connections.values() if user_uuid):
             await self.start_game()
 
     # ゲームのタイマー

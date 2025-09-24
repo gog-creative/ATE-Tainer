@@ -152,6 +152,7 @@ async def websocket_broadcast(ws: WebSocket, game_id: int):
                     await ws.send_text(schemes.Response(text=f"AI処理中にエラーが発生しました：{e.args}").model_dump_json())
                     return
                 # レスポンス
+                game.users[data.user].remaining_question -= 1
                 await ws.send_text(schemes.Response(text=f"回答：{res.reply}（{res.reason}）").model_dump_json())
                 broadcast_data = schemes.Res_Question(
                     time=datetime.datetime.now(TZ),
@@ -161,10 +162,10 @@ async def websocket_broadcast(ws: WebSocket, game_id: int):
                     title=res.reply,
                     question=data.text,
                     reply=res.reason,
+                    remaining_count=user.remaining_question
                 )
 
                 # 配信
-                game.users[data.user].remaining_question -= 1
                 game.messages.append(broadcast_data)
                 await game.broadcast(schemes.WSEvent(root=broadcast_data))
 
@@ -201,6 +202,7 @@ async def websocket_broadcast(ws: WebSocket, game_id: int):
                     user.answered_at = datetime.datetime.now(TZ)
                     game.correct_answerer.append(user)
 
+                user.remaining_answering -= 1
                 # レスポンス
                 await ws.send_text(schemes.Response(text=f"{"正解" if res.is_correct else "不正解"}").model_dump_json())
                 broadcast_data = schemes.Res_Answer(
@@ -210,10 +212,10 @@ async def websocket_broadcast(ws: WebSocket, game_id: int):
                     include_answer=res.is_close or res.is_correct,
                     judge=res.is_correct,
                     answer=data.text if not res.is_correct or res.is_close else "",
+                    remaining_count=user.remaining_answering
                 )
 
                 # 配信
-                user.remaining_answering -= 1
                 game.messages.append(broadcast_data)
                 await game.broadcast(schemes.WSEvent(root=broadcast_data))
 

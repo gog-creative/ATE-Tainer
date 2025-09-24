@@ -37,6 +37,7 @@ class Res_Question(BaseModel):
     title: str
     question: str
     reply: str
+    remaining_count: int
 
 ## 配信用
 class Res_Answer(BaseModel):
@@ -47,6 +48,7 @@ class Res_Answer(BaseModel):
     judge: bool
     include_answer: bool
     answer: str
+    remaining_count: int
 
 ## 配信用
 class Event(BaseModel):
