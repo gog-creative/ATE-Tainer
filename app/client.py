@@ -13,7 +13,7 @@ from pydantic import ValidationError
 import schemes
 from localization import get_string, set_language, get_available_languages, get_current_language
 
-URL_DOMAIN = "atetainer.gog-lab.org"
+URL_DOMAIN = "gog-lab.org"
 os.environ["debug"] = "True"
 
 def resource_path(relative_path):
@@ -494,7 +494,7 @@ class GameClientControl(ft.Column):
                 ft.DataRow(cells=[
                     ft.DataCell(ft.Text(str(i + 1))),
                     ft.DataCell(ft.Text(answerer.nickname)),
-                    ft.DataCell(ft.Text(answerer.answered_at.strftime('%H:%M:%S'))),
+                    ft.DataCell(ft.Text(answerer.answered_at.strftime('%H:%M:%S') if answerer.answered_at else "時刻不明")),
                 ])
             )
 
