@@ -67,6 +67,7 @@ class Game_data:
         self.initial_post_data = initial_post_data          # ゲーム作成時の初期設定データ
         self.manual_next_answer: Optional[str] = None       # 手動で設定された次ゲームのお題
         self.new_game_id:        Optional[int]
+        self.pending_ai_answers: int = 0
 
     @classmethod
     async def __aio_init__(
@@ -141,12 +142,16 @@ class Game_data:
         )
 
     async def ai_answer(self, answer: str):
-        return await self.ai_agent.answer(
-            genre=self.genre,
-            answer=self.answer,
-            question=answer,
-            answer_description=self.answer_description,
-        )
+        self.pending_ai_answers += 1
+        try:
+            return await self.ai_agent.answer(
+                genre=self.genre,
+                answer=self.answer,
+                question=answer,
+                answer_description=self.answer_description,
+            )
+        finally:
+            self.pending_ai_answers -= 1
 
     # イベント配信（レスポンスは個別に）
     async def broadcast(self, data: schemes.WSEvent):
@@ -162,6 +167,10 @@ class Game_data:
         self.state = "finished"
 
         await self.broadcast(schemes.WSEvent(root=schemes.Event(type="timeup")))
+        
+        while self.pending_ai_answers > 0:
+            await asyncio.sleep(0.1)
+            
         # 結果発表～！を配信
         await self.broadcast(
             schemes.WSEvent(
