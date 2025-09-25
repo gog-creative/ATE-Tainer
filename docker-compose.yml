@@ -10,5 +10,5 @@ services:
 
 networks:
   default:
-    external:
-      name: CloudflareTunnel
+    external: true
+    name: CloudflareTunnel
