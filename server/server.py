@@ -177,6 +177,7 @@ async def websocket_broadcast(ws: WebSocket, game_id: int):
                     continue
 
                 user = game.users[data.user]
+                
                 if user.remaining_answering == 0:
                     await ws.send_text(
                         schemes.WSEvent(
@@ -192,6 +193,7 @@ async def websocket_broadcast(ws: WebSocket, game_id: int):
                     )
                     continue
                 try:
+                    answered_at = datetime.datetime.now(TZ)
                     res = await game.ai_answer(data.text)
                 except Exception as e:
                     await ws.send_text(schemes.Response(text=f"AI処理中にエラーが発生しました：{e.args}").model_dump_json())
@@ -199,7 +201,7 @@ async def websocket_broadcast(ws: WebSocket, game_id: int):
     
                 if res.is_correct:
                     user.answered_correctly = True
-                    user.answered_at = datetime.datetime.now(TZ)
+                    user.answered_at = answered_at
                     game.correct_answerer.append(user)
 
                 user.remaining_answering -= 1
