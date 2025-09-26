@@ -193,7 +193,6 @@
     </div>
 
     <script>
-        const API_BASE_URL = 'https://atetainer.gog-lab.org';
         const ADMIN_USER_ID = '00000000-0000-0000-0000-000000000000';
         let authenticatedPassword = '';
 
@@ -225,7 +224,7 @@
             loginBtn.textContent = '確認中...';
 
             try {
-                const response = await fetch(`${API_BASE_URL}/game_list`, {
+                const response = await fetch(`${window.location.origin}/game_list`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password })
@@ -287,7 +286,7 @@
                 return;
             }
             try {
-                const response = await fetch(`${API_BASE_URL}/game_list`, {
+                const response = await fetch(`${window.location.origin}/game_list`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password: authenticatedPassword })
@@ -311,7 +310,7 @@
         async function fetchGameDetails(gameId) {
             gameDetailsArea.innerHTML = '<p>詳細を読み込み中...</p>';
             try {
-                const response = await fetch(`${API_BASE_URL}/${gameId}/?user_id=${ADMIN_USER_ID}`);
+                const response = await fetch(`${window.location.origin}/${gameId}/?user_id=${ADMIN_USER_ID}`);
                  if (!response.ok) {
                     throw new Error(`サーバーエラー: ${response.status}`);
                 }
@@ -377,7 +376,7 @@
             };
 
             try {
-                const response = await fetch(`${API_BASE_URL}/new_game`, {
+                const response = await fetch(`${window.location.origin}/new_game`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -405,7 +404,7 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE_URL}/${gameId}/change_theme`, {
+                const response = await fetch(`${window.location.origin}/${gameId}/change_theme`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password: authenticatedPassword, answer: answer })
