@@ -107,7 +107,7 @@ class Game_data:
         try:
             # 毎秒判定して待機する
             for _ in range(time):
-                # 接続中のプレイヤーが1人以上いて、かつ全員が正解済みの場合
+                # 接続中のプレイヤーが1人以上いて、かつ全員が正解済みか詰みの場合
                 connected_user_ids = {uid for uid in self.connections.values() if uid is not None}
                 connected_players = [
                     user
@@ -116,7 +116,8 @@ class Game_data:
                 ]
 
                 if len(connected_players) > 0 and all(
-                    p.answered_correctly for p in connected_players
+                    p.answered_correctly or p.remaining_answering == 0
+                    for p in connected_players
                 ):
                     await self.game_over()
                     return
