@@ -331,6 +331,7 @@ class GameClientControl(ft.Column):
         self.ws_client.disconnect()
         self._set_ui_for_connected(False)
         self.connect_button.disabled = False
+        self.update()
 
     def _ready_click(self, e):
         self.ws_client.send_message(json.dumps({"type": "ready", "user": str(self.ws_client.user_id)}))
@@ -391,6 +392,7 @@ class GameClientControl(ft.Column):
         self._add_raw_message_to_chat(get_string("disconnected"))
         self._handle_disconnect(None)
         self.connect_button.disabled = False
+        self.update()
 
     # --- Server Event Handlers ---
     def _handle_response(self, data: schemes.Response):
@@ -464,9 +466,9 @@ class GameClientControl(ft.Column):
                 response = httpx.get(api_url)
                 response.raise_for_status()
                 game_data = schemes.GameData_Res.model_validate(response.json())
-                self.page.run_thread(self._handle_status, game_data) if self.page else None
+                self._handle_status(game_data)
             except Exception as e:
-                self.page.run_thread(self._add_raw_message_to_chat, f"タイマー開始エラー: {e}") if self.page else None
+                self._add_raw_message_to_chat(f"タイマー開始エラー: {e}")
 
         if self.game_id_input.value:
             threading.Thread(target=fetch_status_and_start_countdown, args=(self.game_id_input.value,), daemon=True).start()
@@ -726,16 +728,25 @@ class GameClientControl(ft.Column):
 
         def countdown_logic():
             end_time = datetime.datetime.fromisoformat(end_time_str)
+            notified_at = {30, 10, 5}
+            
             while not self.countdown_stop_event.wait(1):
                 now = datetime.datetime.now(end_time.tzinfo)
                 remaining = end_time - now
-                if remaining.total_seconds() <= 0:
+                remaining_seconds = int(remaining.total_seconds())
+
+                if remaining_seconds <= 0:
                     self.timer_text.value = "00:00"
                     self.update()
                     break
-                minutes, seconds = divmod(int(remaining.total_seconds()), 60)
+                
+                minutes, seconds = divmod(remaining_seconds, 60)
                 self.timer_text.value = f"{minutes:02d}:{seconds:02d}"
                 self.update()
+
+                if remaining_seconds in notified_at:
+                    self._add_raw_message_to_chat(get_string("countdown_notification", seconds=remaining_seconds), color=ft.Colors.ORANGE)
+                    notified_at.remove(remaining_seconds)
 
         self.countdown_stop_event.clear()
         self.countdown_thread = threading.Thread(target=countdown_logic, daemon=True)

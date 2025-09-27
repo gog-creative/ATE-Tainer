@@ -59,6 +59,7 @@ translations = {
         "result_column_rank": "順位",
         "result_column_nickname": "ニックネーム",
         "result_column_time": "解答時間",
+        "countdown_notification": "残り{seconds}秒！",
     },
     "en": {
         "language_display": "English - 英語 🇺🇸",
@@ -118,6 +119,7 @@ translations = {
         "result_column_rank": "Rank",
         "result_column_nickname": "Nickname",
         "result_column_time": "Time",
+        "countdown_notification": "{seconds} seconds left!",
     }
 }
 
@@ -162,7 +164,7 @@ def get_string(key: str, **kwargs) -> str:
     プレースホルダーをkwargsで置換することも可能です。
     """
     # キーが見つからない場合は、キー自体を返すことで、どのキーが未翻訳か分かりやすくする
-    text = _current_lang_dict.get(key, f"<{key}>")
+    text = _current_lang_dict.get(key, f"Undefined String Key: <{key}>")
     if kwargs:
         try:
             return text.format(**kwargs)
