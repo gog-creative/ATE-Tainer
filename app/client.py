@@ -157,7 +157,7 @@ class GameClientControl(ft.Column):
         
         self.title_text = ft.Text("ATE-Tainer", size=50, weight=ft.FontWeight.BOLD)
         self.subtitle_text = ft.Text(size=20)
-        self.version_text = ft.Text("build-20250924 (2.0.4.0)", color=ft.Colors.GREY, size=12)
+        self.version_text = ft.Text("build-20250927 (2.0.5.0)", color=ft.Colors.GREY, size=12)
         
         languages = get_available_languages()
         self.language_dropdown = ft.Dropdown(
@@ -274,12 +274,14 @@ class GameClientControl(ft.Column):
 
     # --- UI Event Handlers ---
     def _connect_click(self, e):
+        self.connect_button.disabled = True
         self.is_ready_sent = False
         self.game_is_over = False
         game_id = self.game_id_input.value or "".strip()
         nickname = self.nickname_input.value
         if not game_id or not nickname:
             self._add_raw_message_to_chat(get_string("error_game_id_nickname_required"))
+            self.connect_button.disabled = False
             return
 
         self.ai_response_text.value = get_string("ai_response_placeholder")
@@ -311,20 +313,24 @@ class GameClientControl(ft.Column):
                 self._show_error_dialog(get_string("error_dialog_title"), get_string("http_error_404"))
             else:
                 self._show_error_dialog(get_string("error_dialog_title"), get_string("http_error_server", status_code=exc.response.status_code))
+            self.connect_button.disabled = False
         except httpx.RequestError as exc:
             self._show_error_dialog(get_string("connection_error_dialog_title"), get_string("connection_error_dialog_content", exc=exc))
             print(f"RequestError: {exc}")
+            self.connect_button.disabled = False
         except ValidationError as exc:
             error_message = get_string("data_error_dialog_content")
             self._show_error_dialog(get_string("data_error_dialog_title"), error_message)
             print(f"ValidationError: {exc}")
             if 'response' in locals() and response:
                 print("Received data:", response.text)
+            self.connect_button.disabled = False
 
     def _disconnect_click(self, e):
         self.update_stop_event.set()
         self.ws_client.disconnect()
         self._set_ui_for_connected(False)
+        self.connect_button.disabled = False
 
     def _ready_click(self, e):
         self.ws_client.send_message(json.dumps({"type": "ready", "user": str(self.ws_client.user_id)}))
@@ -360,7 +366,7 @@ class GameClientControl(ft.Column):
 
     # --- WebSocket Callback Handlers ---
     def _on_ws_open(self):
-        self.page.run_thread(self._add_raw_message_to_chat, get_string("connected", user_id=self.ws_client.user_id)) if self.page else None
+        self._add_raw_message_to_chat(get_string("connected", user_id=self.ws_client.user_id))
 
     def _on_ws_message(self, message: str):
         try:
@@ -368,22 +374,23 @@ class GameClientControl(ft.Column):
             
             handler = self._event_handlers.get(event.type)
             if handler:
-                self.page.run_thread(handler, event) if self.page else None
+                handler(event)
             else:
                 print(f"No handler for event type: {event.type}")
 
         except (ValidationError, json.JSONDecodeError) as e:
-            self.page.run_thread(self._add_raw_message_to_chat, get_string("receive_error", message=message)) if self.page else None
+            self._add_raw_message_to_chat(get_string("receive_error", message=message))
             print(f"Error parsing message: {e}")
 
     def _on_ws_error(self, error: str):
-        self.page.run_thread(self._add_raw_message_to_chat, get_string("connection_error", error=error)) if self.page else None
+        self._add_raw_message_to_chat(get_string("connection_error", error=error))
 
     def _on_ws_close(self):
         self.countdown_stop_event.set()
         self.update_stop_event.set()
-        self.page.run_thread(self._add_raw_message_to_chat, get_string("disconnected")) if self.page else None
-        self.page.run_thread(self._handle_disconnect, None) if self.page else None
+        self._add_raw_message_to_chat(get_string("disconnected"))
+        self._handle_disconnect(None)
+        self.connect_button.disabled = False
 
     # --- Server Event Handlers ---
     def _handle_response(self, data: schemes.Response):
@@ -576,7 +583,7 @@ class GameClientControl(ft.Column):
                 game_data = schemes.GameData_Res.model_validate(response.json())
                 
                 if self.page:
-                    self.page.run_thread(self._handle_status, game_data)
+                    self._handle_status(game_data)
 
             except httpx.HTTPStatusError as exc:
                 # Game might have ended and been removed, stop polling.
