@@ -404,6 +404,7 @@ class GameClientControl(ft.Column):
 
         self._add_raw_message_to_chat(f"{data.text}", color=ft.Colors.BLUE)
         self._set_game_controls_enabled(True)
+        self.message_input.focus()
 
     def _handle_res_question(self, data: schemes.Res_Question):
         placeholder = next((c for c in self.chat_area.controls if isinstance(c, ft.Row) and c.data == data.question), None)
@@ -417,6 +418,7 @@ class GameClientControl(ft.Column):
         if data.user == self.ws_client.user_id:
             self.last_question_sent = None
             self._set_game_controls_enabled(True)
+            self.message_input.focus()
             self.question_limit_text.value = get_string("question_limit", count=data.remaining_count)
 
         if data.title:
@@ -436,6 +438,7 @@ class GameClientControl(ft.Column):
         self._add_formatted_message(data)
         if data.user == self.ws_client.user_id:
             self._set_game_controls_enabled(True)
+            self.message_input.focus()
             self.answer_limit_text.value = get_string("answer_limit", count=data.remaining_count)
         self.update()
 
